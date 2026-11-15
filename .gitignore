@@ -1,0 +1,12 @@
+# virtual environment
+venv/
+.venv/
+
+# your recorded data: it lists the apps you use, so never publish it
+*.db
+*.db-wal
+*.db-shm
+
+# python
+__pycache__/
+*.pyc
