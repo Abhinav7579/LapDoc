@@ -78,7 +78,7 @@ Run `python stress_test.py`. It uses every CPU core for 40 seconds. About 30 to 
 | `dashboard.py` | Local web dashboard (Flask and Plotly) |
 | `stress_test.py` | Makes a CPU spike on purpose, for testing |
 | `start_monitor.vbs` / `stop_monitor.bat` | Start and stop everything in the background |
-| `requirements.txt` | Python dependencies |
+
 
 ## Tuning
 
