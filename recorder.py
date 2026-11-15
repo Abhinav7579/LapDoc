@@ -14,6 +14,8 @@ TOP_MEM = 3   # plus top processes by memory
 NCPU = psutil.cpu_count()
 ME = os.getpid()
 IGNORE_NAMES = {"System Idle Process"}
+RETENTION_DAYS = 7     # raw samples older than this are deleted automatically
+PURGE_EVERY = 3600     # seconds between cleanups
 
 user32 = ctypes.windll.user32
 user32.GetForegroundWindow.restype = wintypes.HWND
@@ -32,6 +34,25 @@ def foreground_app():
     except Exception:
         pass
     return None
+
+
+def already_running():
+    """Stop a second copy of the recorder from starting (it would double-write everything)."""
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateMutexW(None, False, "WhyIsThisSlowRecorder")
+    return ctypes.get_last_error() == 183  # ERROR_ALREADY_EXISTS
+
+
+def purge(conn):
+    cutoff = time.time() - RETENTION_DAYS * 86400
+    try:
+        conn.execute("DELETE FROM process_samples WHERE sample_id IN "
+                     "(SELECT id FROM samples WHERE ts < ?)", (cutoff,))
+        conn.execute("DELETE FROM samples WHERE ts < ?", (cutoff,))
+        conn.commit()
+    except sqlite3.OperationalError as e:
+        print("Cleanup skipped:", e)
+        conn.rollback()
 
 
 def add_column(conn, table, col, decl):
@@ -98,7 +119,12 @@ def pick(rows):
 
 
 def main():
+    if already_running():
+        print("The recorder is already running. Stop it first (stop_monitor.bat).")
+        return
     conn = init_db()
+    purge(conn)
+    last_purge = time.time()
 
     psutil.cpu_percent(None)
     _, prev_io = sample_processes({}, 1)  # prime the counters
@@ -145,6 +171,10 @@ def main():
             except sqlite3.OperationalError as e:
                 print("DB busy, skipping one sample:", e)
                 conn.rollback()
+
+            if now - last_purge > PURGE_EVERY:
+                purge(conn)
+                last_purge = now
 
             time.sleep(max(0, INTERVAL - (time.time() - now)))
     except KeyboardInterrupt:

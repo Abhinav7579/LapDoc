@@ -12,6 +12,7 @@ CHECK_EVERY = 10    # seconds between checks for new data
 END_AFTER = 5       # calm samples in a row that end an incident
 MAX_LEN = 600       # force-close an incident after this many seconds
 IGNORE = "System Idle Process"
+MIN_DURATION = 3    # ignore blips shorter than this many seconds (raise it to cut false alarms)
 
 # floor = minimum value to count, jump = minimum rise above baseline,
 # pcol = which per-process column to blame, min_delta = minimum per-process rise to be a suspect
@@ -108,6 +109,8 @@ def explain(metric, base, peak, start_ts, dur, parts, fg):
 
 def close_incident(src, out, metric, e):
     dur = e["last_high"] - e["start_ts"]
+    if dur < MIN_DURATION:
+        return
     suspects = analyze(src, metric, e["peak_sid"], e["start_ts"])
     parts = describe(metric, suspects)
     row = src.execute("SELECT fg_app FROM samples WHERE id=?", (e["peak_sid"],)).fetchone()

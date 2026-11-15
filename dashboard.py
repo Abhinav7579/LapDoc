@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import sys
 import threading
 import time
 import webbrowser
@@ -639,5 +640,6 @@ startTimer();
 
 if __name__ == "__main__":
     print(f"Dashboard running at http://127.0.0.1:{PORT}  (Ctrl+C to stop)")
-    threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
+    if "--no-browser" not in sys.argv:  # start_monitor.vbs uses this flag at login
+        threading.Timer(1.0, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
     app.run(host="127.0.0.1", port=PORT, debug=False)
